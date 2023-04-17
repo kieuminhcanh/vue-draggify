@@ -1,0 +1,61 @@
+<template>
+  <v-layout>
+    <v-app-bar title="Vuetify Notifier">
+      <v-btn icon="mdi-github" variant="text" href="https://github.com/kieuminhcanh/vuetify-notifier" target="_blank">
+        <v-tooltip activator="parent" location="bottom">Github</v-tooltip></v-btn>
+      <v-btn icon="mdi-code-tags" variant="text"
+        href="https://github.com/kieuminhcanh/vuetify-notifier/blob/master/src/App.vue" target="_blank">
+        <v-tooltip activator="parent" location="bottom">Source Code</v-tooltip></v-btn>
+
+
+      <v-tooltip location="bottom">
+        <template v-slot:activator="{ props }">
+          <v-btn icon v-bind="props" href="https://github.com/kieuminhcanh/vuetify-notifier" target="_blank">
+            <v-icon>
+              mdi-github
+            </v-icon>
+          </v-btn>
+        </template>
+        <span>Github</span>
+      </v-tooltip>
+      <v-tooltip location="bottom">
+        <template v-slot:activator="{ props }">
+          <v-btn icon v-bind="props" href="https://github.com/kieuminhcanh/vuetify-notifier/blob/master/src/App.vue"
+            target="_blank">
+            <v-icon>
+              mdi-code-tags
+            </v-icon>
+          </v-btn>
+        </template>
+        <span>Source Code</span>
+      </v-tooltip>
+
+    </v-app-bar>
+    <v-main>
+      <VContainer>
+        <VCard width="1000" height="1000" style="position: relative;">
+          <Draggify v-bind="config">
+            <v-list-item prepend-avatar="https://cdn.vuetifyjs.com/images/john.png" title="John Leider"
+              subtitle="john@google.com">
+            </v-list-item>
+          </Draggify>
+        </VCard>
+      </VContainer>
+    </v-main>
+  </v-layout>
+</template>
+
+<script setup lang="ts">
+import { VContainer, VSheet } from "vuetify/components";
+import { ref } from "vue";
+import Draggify from "../src/components/Draggify.vue";
+import { reactive } from "vue";
+import { VCard } from "vuetify/components";
+
+const config = reactive({
+  color: 'green'
+})
+
+</script>
+
+
