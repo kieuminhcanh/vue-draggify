@@ -33,12 +33,13 @@
     </v-app-bar>
     <v-main>
       <VContainer>
-        <VCard width="1000" height="1000" style="position: relative;">
-          <Draggify v-bind="config">
+        <VCard width="800" height="600" style="position: relative;">
+          <Draggify v-bind="config" v-for="config in configs">
             <v-list-item prepend-avatar="https://cdn.vuetifyjs.com/images/john.png" title="John Leider"
               subtitle="john@google.com">
             </v-list-item>
           </Draggify>
+
         </VCard>
       </VContainer>
     </v-main>
@@ -51,10 +52,52 @@ import { ref } from "vue";
 import Draggify from "../src/components/Draggify.vue";
 import { reactive } from "vue";
 import { VCard } from "vuetify/components";
+import { DraggifyProps } from "../src/types";
 
-const config = reactive({
-  color: 'green'
-})
+const configs = ref<DraggifyProps[]>([
+  {
+    size: {
+      width: 300,
+      height: 56,
+    },
+    position: {
+      x: 0,
+      y: 0,
+    },
+    options: {
+      grid: {
+        stickToGrid: true,
+        x: 10,
+        y: 10,
+      },
+      resize: {
+        direction: 'x',
+        handle: 'click'
+      }
+    }
+  },
+  {
+    size: {
+      width: 300,
+      height: 56,
+    },
+    position: {
+      x: 350,
+      y: 0,
+    },
+    options: {
+      grid: {
+        stickToGrid: false,
+        x: 10,
+        y: 10,
+      },
+      resize: {
+        direction: 'x',
+      }
+    }
+  },
+
+])
 
 </script>
 

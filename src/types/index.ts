@@ -1,16 +1,55 @@
 export type DraggifyDirection = 't' | 'r' | 'b' | 'l' | 'x' | 'y' | 'a';
 
+export * from '../components/Draggify.vue';
 
-export interface DraggifyOptions {
-  resizeDirection: DraggifyDirection;
-  resizeColor: string;
-  dragDirection: DraggifyDirection;
+export interface DraggifyProps {
+  size: DraggifySize;
+  position: DraggifyPosition;
+  options?: DraggifyOptions;
+  onDragMove?: (size: DraggifySize) => void;
+  onDragEnd?: (size: DraggifySize) => void;
+  onResizeMove?: (size: DraggifySize) => void;
+  onResizeEnd?: (size: DraggifySize) => void;
 }
 
+export interface DraggifyGrid {
+  stickToGrid?: boolean;
+  x: number;
+  y: number;
+}
+
+export interface DraggifyOptions {
+  grid?: DraggifyGrid;
+  resize?: DraggifyResizeOptions
+  drag?: DraggifyDragOptions
+
+}
+
+export interface DraggifyResizeOptions {
+  disabled?: boolean;
+  direction: DraggifyDirection;
+  color?: string;
+  handle?: 'click' | 'hover';
+}
+export interface DraggifyDragOptions {
+  disabled?: boolean;
+  direction?: DraggifyDirection;
+}
 
 export interface DraggifySize {
   width: number;
   height: number;
+}
+export interface DraggifyPosition {
   x: number;
   y: number;
+}
+
+export interface DraggifyState {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  isDragging?: boolean;
+  isResizing?: boolean;
 }

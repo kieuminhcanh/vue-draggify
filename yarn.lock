@@ -944,11 +944,6 @@ csstype@^2.6.8:
   resolved "https://registry.yarnpkg.com/csstype/-/csstype-2.6.21.tgz#2efb85b7cc55c80017c66a5ad7cbd931fda3a90e"
   integrity sha512-Z1PhmomIfypOpoMjRQB70jfvy/wxT50qW08YXO5lMIJkrdq4yOTR+AW7FqutScmB9NkLwxo+jU+kZLbofZZq/w==
 
-dayjs@^1.11.7:
-  version "1.11.7"
-  resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.7.tgz#4b296922642f70999544d1144a2c25730fce63e2"
-  integrity sha512-+Yw9U6YO5TQohxLcIkrXBeY73WP3ejHWVvx8XCk3gxvQDCTEmS48ZrSZCKciI7Bhl/uCMyxYtE9UqRILmFphkQ==
-
 de-indent@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/de-indent/-/de-indent-1.0.2.tgz#b2038e846dc33baa5796128d0804b455b8c1e21d"
@@ -2048,18 +2043,6 @@ vue-demi@>=0.14.0:
   version "0.14.0"
   resolved "https://registry.yarnpkg.com/vue-demi/-/vue-demi-0.14.0.tgz#dcfd9a9cf9bb62ada1582ec9042372cf67ca6190"
   integrity sha512-gt58r2ogsNQeVoQ3EhoUAvUsH9xviydl0dWJj7dabBC/2L4uBId7ujtCwDRD0JhkGsV1i0CtfLAeyYKBht9oWg==
-
-vue-drag-resize@^1.5.0-rc3, vue-drag-resize@^1.5.4:
-  version "1.5.4"
-  resolved "https://registry.yarnpkg.com/vue-drag-resize/-/vue-drag-resize-1.5.4.tgz#f583f40f356e5792aa89109b3d13ba4407c25198"
-  integrity sha512-SR3U7n6TAZEBgP7zw7bR9mjtAlYBjqIoaWTDPz5HXN/nYhOxKSA31aD7p71fmq1jtyt9reAnCx62valNL9ZAcg==
-  dependencies:
-    vue-drag-resize "^1.5.0-rc3"
-
-vue-resizable@^2.1.7:
-  version "2.1.7"
-  resolved "https://registry.yarnpkg.com/vue-resizable/-/vue-resizable-2.1.7.tgz#c29421810a95a8effaaa3f44b04980ab7afa4849"
-  integrity sha512-zEbWhRR8iXT8+nt3u8rkfrNpkPNsPkf7HteBh+AlPIsJ7rf9fyNwMqr0Q4FRzIpNIpZD5Zrr4+3+YELU0vc1Iw==
 
 vue-template-compiler@^2.7.14:
   version "2.7.14"

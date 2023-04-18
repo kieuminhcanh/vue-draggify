@@ -1,5 +1,5 @@
 <template>
-  <div class="draggify-container bg-blue" :style="containerStyles" v-on="containerEvents">
+  <div class="draggify-item" :style="containerStyles" v-on="containerEvents">
     <div class="draggify-resizer draggify-resizer-top" v-if="checkResizeable('t')" :style="resizerStyles"
       @mousedown.stop="$event => onMouseDownResizer($event, 'top')"></div>
     <div class="draggify-resizer draggify-resizer-right" v-if="checkResizeable('r')" :style="resizerStyles"
@@ -17,36 +17,30 @@
 
 <script setup lang="ts">
 import { CSSProperties, PropType, computed, reactive, ref } from 'vue';
-import { DraggifyDirection, DraggifyOptions, DraggifySize } from '../types';
+import { DraggifyDirection, DraggifyGrid, DraggifyOptions, DraggifyPosition, DraggifySize } from '../types';
+import { DraggifyState } from '../types';
+import { mergeObjects } from "../utils";
+import { defaultOptions } from "../utils/options";
+
 
 const props = defineProps({
-  width: {
-    type: Number as PropType<number>,
-    default: 200,
+  size: {
+    type: Object as PropType<DraggifySize>,
+    default: () => ({
+      width: 200,
+      height: 100,
+    }),
   },
-  height: {
-    type: Number as PropType<number>,
-    default: 100,
-  },
-  x: {
-    type: Number as PropType<number>,
-    default: 0,
-  },
-  y: {
-    type: Number as PropType<number>,
-    default: 0,
+  position: {
+    type: Object as PropType<DraggifyPosition>,
+    default: () => ({
+      x: 0,
+      y: 0,
+    }),
   },
   options: {
     type: Object as PropType<DraggifyOptions>,
-    default: () => ({
-      resizeDirection: 'a',
-      resizeColor: 'rgba(0, 0, 0, 0.5)',
-      dragDirection: 'a',
-    }),
-  },
-  resizeHandle: {
-    type: String as PropType<'click' | 'hover'>,
-    default: 'hover',
+    default: () => ({}),
   },
   onDragMove: {
     type: Function as PropType<(size: DraggifySize) => void>,
@@ -60,64 +54,56 @@ const props = defineProps({
   onResizeEnd: {
     type: Function as PropType<(size: DraggifySize) => void>,
   },
-  resizeable: {
-    type: Boolean as PropType<boolean>,
-    default: true,
-  },
-  draggable: {
-    type: Boolean as PropType<boolean>,
-    default: true,
-  },
 });
+
+const _options = computed<DraggifyOptions>(() => {
+  return mergeObjects(defaultOptions, props.options)
+})
 
 const containerEvents = reactive({
-  click: props.resizeHandle === 'click' ? (e: Event) => { resizeable.value = true } : undefined,
-  mouseover: props.resizeHandle === 'hover' ? (e: Event) => { resizeable.value = true } : undefined,
-  mouseleave: props.resizeHandle === 'hover' ? (e: Event) => { resizeable.value = false } : undefined,
-  'mousedown': (e: MouseEvent) => { onMouseDownContainer(e) },
+  click: _options.value?.resize?.handle === 'click' ? (e: Event) => { state.isResizing = !state.isResizing } : undefined,
+  mouseover: _options.value?.resize?.handle === 'hover' ? (e: Event) => { state.isResizing = true } : undefined,
+  mouseleave: _options.value?.resize?.handle === 'hover' ? (e: Event) => { state.isResizing = false } : undefined,
+  mousedown: (e: MouseEvent) => { onMouseDownContainer(e) },
 });
 
-const resizeable = ref(false);
-
 const checkResizeable = (direction: DraggifyDirection) => {
-  if (!resizeable.value)
+
+  if (_options.value?.resize?.disabled || !state.isResizing)
     return false
 
-  if (props.options.resizeDirection === 'a') return true
+
+  if (_options.value?.resize?.direction === 'a') return true
 
   switch (direction) {
-    case 't': return ['t', 'y'].includes(props.options.resizeDirection)
-    case 'r': return ['r', 'x'].includes(props.options.resizeDirection)
-    case 'b': return ['b', 'y'].includes(props.options.resizeDirection)
-    case 'l': return ['l', 'x'].includes(props.options.resizeDirection)
+    case 't': return ['t', 'y'].includes(_options.value?.resize?.direction as string)
+    case 'r': return ['r', 'x'].includes(_options.value?.resize?.direction as string)
+    case 'b': return ['b', 'y'].includes(_options.value?.resize?.direction as string)
+    case 'l': return ['l', 'x'].includes(_options.value?.resize?.direction as string)
     default: return false
   }
 };
 
-
-
-const size = reactive<DraggifySize>({
-  width: props.width,
-  height: props.height,
-  x: props.x,
-  y: props.y,
+const state = reactive<DraggifyState>({
+  width: props.size.width,
+  height: props.size.height,
+  x: props.position.x,
+  y: props.position.y,
+  isDragging: false,
+  isResizing: false,
 });
 
-const containerStyles = computed<CSSProperties>(() => {
-  return {
-    width: `${size.width}px`,
-    height: `${size.height}px`,
-    left: `${size.x}px`,
-    top: `${size.y}px`,
-    'user-select': props.draggable ? 'none' : 'text'
-  };
-});
+const containerStyles = computed<CSSProperties>(() => ({
+  width: `${state.width}px`,
+  height: `${state.height}px`,
+  left: `${state.x}px`,
+  top: `${state.y}px`,
+  'user-select': state.isDragging ? 'none' : 'text'
+}));
 
-const resizerStyles = computed(() => {
-  return {
-    backgroundColor: props.options.resizeColor,
-  };
-});
+const resizerStyles = computed(() => ({
+  'background-color': _options.value?.resize?.color
+}));
 
 /**
  * 
@@ -137,10 +123,8 @@ const onMouseDownResizer = (e: any, direction: "top" | "right" | "bottom" | "lef
   let x = e.clientX;
   let y = e.clientY;
 
-  let _top = size.y;
-  let _left = size.x;
-
-
+  let _top = state.y;
+  let _left = state.x;
 
   if (direction === 'top' || direction === 'bottom') {
     element.style.cursor = 'row-resize';
@@ -155,34 +139,34 @@ const onMouseDownResizer = (e: any, direction: "top" | "right" | "bottom" | "lef
     if (!rootElement) return
     switch (direction) {
       case "top":
-        if (props.draggable) {
-          size.y = _top + dy;
+        if (!_options.value?.drag?.disabled) {
+          state.y = _top + dy;
         }
-        size.height = _height + -(dy);
+        state.height = _height + -(dy);
         break;
       case "right":
-        size.width = _width + dx;
+        state.width = _width + dx;
         break;
       case "bottom":
-        size.height = _height + dy;
+        state.height = _height + dy;
         break;
       case "left":
-        if (props.draggable) {
-          size.x = _left + dx;
+        if (!_options.value?.drag?.disabled) {
+          state.x = _left + dx;
         }
-        size.width = _width + -(dx);
+        state.width = _width + -(dx);
         break;
     }
-    props.onResizeMove?.(size);
+    props.onResizeMove?.(state);
   };
 
   const onMouseUpHandler = (e: MouseEvent) => {
 
     element.style.removeProperty('cursor');
-    resizeable.value = false;
+    state.isResizing = false;
     document.removeEventListener('mousemove', onMouseMoveHandler);
     document.removeEventListener('mouseup', onMouseUpHandler);
-    props.onResizeEnd?.(size);
+    props.onResizeEnd?.(state);
   };
 
   document.addEventListener('mousemove', onMouseMoveHandler);
@@ -196,11 +180,14 @@ const onMouseDownResizer = (e: any, direction: "top" | "right" | "bottom" | "lef
 const onMouseDownContainer = (e: MouseEvent) => {
   let element = e.target as HTMLElement;
 
+  let itemElement: HTMLElement | null = element.closest('div .draggify-item');
+  let containerElement: HTMLElement | null | undefined = itemElement?.parentElement
+
   let x = e.clientX;
   let y = e.clientY;
 
-  let _top = size.y;
-  let _left = size.x;
+  let _top = state.y;
+  let _left = state.x;
 
   element.style.cursor = 'move';
 
@@ -208,13 +195,42 @@ const onMouseDownContainer = (e: MouseEvent) => {
     const dx = e.clientX - x;
     const dy = e.clientY - y;
 
-    if (props.options.dragDirection === 'a' || props.options.dragDirection === 'x') {
-      size.x = _left + dx;
+    const newX = _left + dx;
+    const newY = _top + dy;
+
+
+    if (_options.value?.drag?.direction === 'a' || _options.value?.drag?.direction === 'x') {
+      if (newX < 10) {
+        state.x = 0
+      } else if (containerElement && newX > (containerElement?.offsetWidth as number - state.width - 5)) {
+        state.x = containerElement?.offsetWidth as number - state.width
+      } else {
+
+        if (_options.value?.grid?.stickToGrid) {
+          const stickX = Math.round((newX) / (_options.value?.grid?.x as number)) * (_options.value?.grid?.x as number);
+          state.x = stickX;
+        } else {
+          state.x = newX;
+        }
+      }
     }
-    if (props.options.dragDirection === 'a' || props.options.dragDirection === 'y') {
-      size.y = _top + dy;
+    if (_options.value?.drag?.direction === 'a' || _options.value?.drag?.direction === 'y') {
+      if (newY < 10) {
+        state.y = 0
+      } else if (containerElement && newY > (containerElement?.offsetHeight as number - state.height - 10)) {
+        state.y = containerElement?.offsetHeight as number - state.height
+      } else {
+
+
+        if (_options.value.grid?.stickToGrid) {
+          const stickY = Math.round((_top + dy) / (_options.value?.grid?.y as number)) * (_options.value?.grid?.y as number);
+          state.y = stickY;
+        } else {
+          state.y = newY;
+        }
+      }
     }
-    props.onDragMove?.(size);
+    props.onDragMove?.(state);
   }
 
   const onMouseUpHandler = (e: MouseEvent) => {
@@ -223,7 +239,7 @@ const onMouseDownContainer = (e: MouseEvent) => {
 
     document.removeEventListener('mousemove', onMouseMoveHandler);
     document.removeEventListener('mouseup', onMouseUpHandler);
-    props.onDragEnd?.(size);
+    props.onDragEnd?.(state);
   };
 
   document.addEventListener('mousemove', onMouseMoveHandler);
@@ -232,9 +248,9 @@ const onMouseDownContainer = (e: MouseEvent) => {
 };
 </script>
 
-<style lang="scss" scoped>
-.draggify-container {
-  position: relative;
+<style lang="scss">
+.draggify-item {
+  position: absolute;
   cursor: pointer;
 
   .draggify-resizer {

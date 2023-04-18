@@ -1,17 +1,53 @@
 {
-  "name": "vuetify-notifier",
-  "version": "0.0.7",
+  "name": "vue-draggify",
+  "description": "Vue Drag and Resize Component",
+  "version": "0.0.3",
+  "author": {
+    "name": "Kieu Minh Canh",
+    "email": "minhcanhdn0704@gmail.com"
+  },
   "license": "MIT",
+  "homepage": "https://github.com/kieuminhcanh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kieuminhcanh/vue-draggify.git",
+    "directory": "src"
+  },
+  "keywords": [
+    "vue",
+    "vuetify",
+    "drag",
+    "draggable",
+    "resize",
+    "resizable",
+    "vue drag",
+    "vue draggable",
+    "vue resize",
+    "vue resizable",
+    "vue drag and resize",
+    "vue draggable and resizable",
+    "vue drag and resize component",
+    "vue draggable and resizable component",
+    "vue drag and resize component for vuetify"
+  ],
   "files": [
     "dist"
   ],
   "type": "module",
-  "main": "./dist/vuetify-notifier.umd.cjs",
-  "module": "./dist/vuetify-notifier.js",
+  "main": "./dist/vue-draggify.umd.cjs",
+  "jsdelivr": "./dist/vue-draggify.js",
+  "unpkg": "./dist/vue-draggify.js",
+  "types": "./dist/types/index.d.ts",
+  "styles": "./dist/style.css",
+  "module": "./dist/vue-draggify.js",
   "exports": {
     ".": {
       "import": "./dist/vue-draggify.js",
-      "require": "./dist/vue-draggify.umd.cjs"
+      "require": "./dist/vue-draggify.umd.cjs",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./styles": {
+      "default": "./dist/style.css"
     },
     "./nuxt": {
       "types": "./dist/nuxt/types.d.ts",
@@ -19,7 +55,14 @@
       "require": "./dist/nuxt/module.cjs"
     }
   },
-  "types": "./src/types/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "*",
+        "dist/*"
+      ]
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
@@ -29,7 +72,6 @@
     "preview": "vite preview --config=vite.web.config.ts"
   },
   "dependencies": {
-    "dayjs": "^1.11.7",
     "vue": "^3.2.47"
   },
   "devDependencies": {
@@ -43,9 +85,17 @@
     "typescript": "^5.0.3",
     "vite": "^4.2.1",
     "vite-plugin-dts": "^2.2.0",
-    "vue-drag-resize": "^1.5.4",
-    "vue-resizable": "^2.1.7",
     "vue-tsc": "^1.2.0",
     "vuetify": "^3.1.13"
+  },
+  "peerDependencies": {
+    "vue": "^3.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "vetur": {
+    "tags": "dist/json/tags.json",
+    "attributes": "dist/json/attributes.json"
   }
 }
