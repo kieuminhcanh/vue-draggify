@@ -12,19 +12,23 @@ export interface DraggifyProps {
   onResizeEnd?: (size: DraggifySize) => void;
 }
 
-export interface DraggifyGrid {
+export interface DraggifyGridOptions {
   stickToGrid?: boolean;
   x: number;
   y: number;
 }
 
 export interface DraggifyOptions {
-  grid?: DraggifyGrid;
+  style?: DraggifyStyleOptions;
+  grid?: DraggifyGridOptions;
   resize?: DraggifyResizeOptions
   drag?: DraggifyDragOptions
 
 }
 
+export interface DraggifyStyleOptions {
+  disabled: boolean;
+}
 export interface DraggifyResizeOptions {
   disabled?: boolean;
   direction: DraggifyDirection;

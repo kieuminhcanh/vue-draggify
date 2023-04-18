@@ -1,5 +1,6 @@
 <template>
-  <div class="draggify-item" :style="containerStyles" v-on="containerEvents">
+  <div class="draggify-item" :class="{ 'draggify-item-style': !_options?.style?.disabled }" :style="containerStyles"
+    v-on="containerEvents">
     <div class="draggify-resizer draggify-resizer-top" v-if="checkResizeable('t')" :style="resizerStyles"
       @mousedown.stop="$event => onMouseDownResizer($event, 'top')"></div>
     <div class="draggify-resizer draggify-resizer-right" v-if="checkResizeable('r')" :style="resizerStyles"
@@ -17,7 +18,7 @@
 
 <script setup lang="ts">
 import { CSSProperties, PropType, computed, reactive, ref } from 'vue';
-import { DraggifyDirection, DraggifyGrid, DraggifyOptions, DraggifyPosition, DraggifySize } from '../types';
+import { DraggifyDirection, DraggifyGridOptions, DraggifyOptions, DraggifyPosition, DraggifySize } from '../types';
 import { DraggifyState } from '../types';
 import { mergeObjects } from "../utils";
 import { defaultOptions } from "../utils/options";
@@ -189,7 +190,10 @@ const onMouseDownContainer = (e: MouseEvent) => {
   let _top = state.y;
   let _left = state.x;
 
-  element.style.cursor = 'move';
+
+  if (itemElement) {
+    (itemElement?.style as CSSStyleDeclaration).cursor = 'move';
+  }
 
   const onMouseMoveHandler = (e: MouseEvent) => {
     const dx = e.clientX - x;
@@ -234,9 +238,9 @@ const onMouseDownContainer = (e: MouseEvent) => {
   }
 
   const onMouseUpHandler = (e: MouseEvent) => {
-
-    element.style.removeProperty('cursor');
-
+    if (itemElement) {
+      itemElement.style.removeProperty('cursor');
+    }
     document.removeEventListener('mousemove', onMouseMoveHandler);
     document.removeEventListener('mouseup', onMouseUpHandler);
     props.onDragEnd?.(state);
@@ -253,9 +257,21 @@ const onMouseDownContainer = (e: MouseEvent) => {
   position: absolute;
   cursor: pointer;
 
+  &.draggify-item-style {
+    background-color: #ffffff;
+    border: 1px solid #dddddd;
+    border-radius: 5px;
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+  }
+
+  &.draggify-item-style:hover {
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+  }
+
   .draggify-resizer {
     position: absolute;
     z-index: 1;
+    border-radius: 5px;
 
     &.draggify-resizer-top {
       top: 0;
@@ -293,6 +309,7 @@ const onMouseDownContainer = (e: MouseEvent) => {
     display: flex;
     align-items: center;
     overflow: hidden;
+    user-select: none;
   }
 }
 </style>

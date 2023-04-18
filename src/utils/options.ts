@@ -1,6 +1,9 @@
 import { DraggifyOptions } from "../types";
 
 export const defaultOptions: DraggifyOptions = {
+  style: {
+    disabled: false,
+  },
   resize: {
     direction: 'a',
     color: 'rgba(0, 0, 0, 0.5)',
