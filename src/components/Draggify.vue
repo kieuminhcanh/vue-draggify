@@ -270,7 +270,7 @@ const onMouseDownContainer = (e: MouseEvent) => {
 
   .draggify-resizer {
     position: absolute;
-    z-index: 1;
+
     border-radius: 5px;
 
     &.draggify-resizer-top {
