@@ -67,11 +67,11 @@ const configs = ref<DraggifyProps[]>([
     options: {
       grid: {
         stickToGrid: true,
-        x: 10,
+        x: 100,
         y: 10,
       },
       resize: {
-        direction: 'x',
+        direction: 'a',
         handle: 'click'
       }
     }
@@ -93,6 +93,9 @@ const configs = ref<DraggifyProps[]>([
       },
       resize: {
         direction: 'x',
+      },
+      drag: {
+        direction: 'y'
       }
     }
   },

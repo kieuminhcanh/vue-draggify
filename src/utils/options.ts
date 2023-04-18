@@ -3,6 +3,7 @@ import { DraggifyOptions } from "../types";
 export const defaultOptions: DraggifyOptions = {
   style: {
     disabled: false,
+    marginY: 0,
   },
   resize: {
     direction: 'a',

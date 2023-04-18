@@ -20,6 +20,7 @@ export interface DraggifyGridOptions {
 
 export interface DraggifyOptions {
   style?: DraggifyStyleOptions;
+  container?: DraggifySize;
   grid?: DraggifyGridOptions;
   resize?: DraggifyResizeOptions
   drag?: DraggifyDragOptions
@@ -28,6 +29,7 @@ export interface DraggifyOptions {
 
 export interface DraggifyStyleOptions {
   disabled: boolean;
+  marginY: number;
 }
 export interface DraggifyResizeOptions {
   disabled?: boolean;

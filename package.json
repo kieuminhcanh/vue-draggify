@@ -1,7 +1,7 @@
 {
   "name": "vue-draggify",
   "description": "Vue Drag and Resize Component",
-  "version": "0.0.4",
+  "version": "0.0.8",
   "author": {
     "name": "Kieu Minh Canh",
     "email": "minhcanhdn0704@gmail.com"
@@ -37,7 +37,7 @@
   "main": "./dist/vue-draggify.umd.cjs",
   "jsdelivr": "./dist/vue-draggify.js",
   "unpkg": "./dist/vue-draggify.js",
-  "types": "./dist/types/index.d.ts",
+  "types": "./dist/index.d.ts",
   "styles": "./dist/style.css",
   "module": "./dist/vue-draggify.js",
   "exports": {
@@ -48,6 +48,9 @@
     },
     "./styles": {
       "default": "./dist/style.css"
+    },
+    "./types": {
+      "default": "./dist/types/index.d.ts"
     },
     "./nuxt": {
       "types": "./dist/nuxt/types.d.ts",

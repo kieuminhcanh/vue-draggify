@@ -1,5 +1,4 @@
 import { App } from 'vue';
-
 import VueDraggify from "./components/Draggify.vue";
 
 export default {
@@ -8,5 +7,4 @@ export default {
   },
 };
 
-
-
+export * from './types';
