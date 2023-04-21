@@ -14,33 +14,24 @@
       </div>
       <div class="draggify-resizer draggify-resizer-left" v-show="checkResizeable('l')" :style="resizerStyles"
         @mousedown.stop="$event => onMouseDownResizer($event, 'left')"></div>
-
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { CSSProperties, PropType, computed, reactive, ref } from 'vue';
-import { DraggifyDirection, DraggifyGridOptions, DraggifyOptions, DraggifyPosition, DraggifySize } from '../types';
+import { DraggifyDirection, DraggifyGridOptions, DraggifyInput, DraggifyOptions, DraggifyPosition, DraggifySize } from '../types';
 import { DraggifyState } from '../types';
-import { mergeObjects } from "../utils";
+import deepMerge from 'deepmerge';
 import { defaultOptions } from "../utils/options";
+import { useElementHover } from '@vueuse/core'
+
 
 
 const props = defineProps({
-  size: {
-    type: Object as PropType<DraggifySize>,
-    default: () => ({
-      width: 200,
-      height: 100,
-    }),
-  },
-  position: {
-    type: Object as PropType<DraggifyPosition>,
-    default: () => ({
-      x: 0,
-      y: 0,
-    }),
+  modelValue: {
+    type: Object as PropType<DraggifyInput>,
+    required: true,
   },
   options: {
     type: Object as PropType<DraggifyOptions>,
@@ -63,20 +54,21 @@ const props = defineProps({
 
 const itemRef = ref<HTMLElement>();
 
-const _options = computed<DraggifyOptions>(() => mergeObjects(defaultOptions, props.options))
+const isHovered = useElementHover(itemRef)
+
+
+const _options = computed<DraggifyOptions>(() => deepMerge(defaultOptions, props.options))
 
 const containerEvents = reactive({
-  click: _options.value?.resize?.handle === 'click' ? (e: Event) => { state.isResizing = !state.isResizing } : undefined,
-  mouseover: _options.value?.resize?.handle === 'hover' ? (e: Event) => { state.isResizing = true } : undefined,
-  mouseleave: _options.value?.resize?.handle === 'hover' ? (e: Event) => { state.isResizing = false } : undefined,
   mousedown: (e: MouseEvent) => { onMouseDownContainer(e) },
 });
 
 const checkResizeable = (direction: DraggifyDirection) => {
 
-  if (_options.value?.resize?.disabled || !state.isResizing)
+  if (_options.value?.resize?.disabled)
     return false
 
+  if (!isHovered.value) return false
 
   if (_options.value?.resize?.direction === 'a') return true
 
@@ -89,14 +81,23 @@ const checkResizeable = (direction: DraggifyDirection) => {
   }
 };
 
+const emit = defineEmits(['update:modelValue'])
+
 const state = reactive<DraggifyState>({
-  width: props.size.width,
-  height: props.size.height - (_options.value?.style?.marginY as number * 2),
-  x: props.position.x,
-  y: props.position.y,
+  width: props.modelValue.width,
+  height: props.modelValue.height - (_options.value?.style?.marginY as number * 2),
+  x: props.modelValue.x,
+  y: props.modelValue.y,
   isDragging: false,
   isResizing: false,
 });
+
+const position = computed<DraggifyPosition>(() => ({
+  top: state.y as number,
+  right: state.x as number + state.width as number,
+  bottom: state.y as number + state.height as number,
+  left: state.x as number,
+}))
 
 const containerStyles = computed<CSSProperties>(() => ({
   width: `${state.width}px`,
@@ -119,84 +120,110 @@ const resizerStyles = computed(() => ({
 const onMouseDownResizer = (e: MouseEvent, direction: "top" | "right" | "bottom" | "left") => {
   let element: HTMLElement = e.target as HTMLElement;
 
-  let _width: number = itemRef.value?.offsetWidth || 0;
-  let _height: number = itemRef.value?.offsetHeight || 0;
-
-  let x = e.clientX;
-  let y = e.clientY;
-
-  let _top = state.y;
-  let _left = state.x;
-
-  if (direction === 'top' || direction === 'bottom') {
-    if (element) {
-      element.style.cursor = 'row-resize';
-    }
-  } else {
-    if (element) {
-      element.style.cursor = 'col-resize';
-    }
+  const container: DraggifySize = _options.value?.container ? _options.value?.container : {
+    width: itemRef.value?.parentElement?.offsetWidth as number,
+    height: itemRef.value?.parentElement?.offsetHeight as number
   }
 
-  const onMouseMoveHandler = (e: MouseEvent) => {
-    const dx = e.clientX - x;
-    const dy = e.clientY - y;
+  const axis = {
+    x: e.clientX,
+    y: e.clientY
+  }
 
-    const newX = _left + dx;
-    const newY = _top + dy;
+  const stateTemp = deepMerge(state, position.value) as DraggifyState;
+
+  if (direction === 'top' || direction === 'bottom') {
+    element.style.cursor = 'row-resize';
+    document.body.style.cursor = 'row-resize';
+  } else {
+    element.style.cursor = 'col-resize';
+    document.body.style.cursor = 'col-resize';
+  }
+
+  const onResizeMove = (e: MouseEvent) => {
+    const moveAxis = {
+      x: e.clientX - axis.x,
+      y: e.clientY - axis.y
+    }
+
+    const newAxis = {
+      x: stateTemp.x as number + moveAxis.x,
+      y: stateTemp.y as number + moveAxis.y,
+    }
+    const newSize = {
+      width: stateTemp.width as number + moveAxis.x,
+      height: stateTemp.height as number + moveAxis.y,
+    }
+
+    if (_options.value?.grid?.stickToGrid) {
+      newAxis.x = Math.round((newAxis.x) / (_options.value?.grid?.x as number)) * (_options.value?.grid?.x as number);
+      newAxis.y = Math.round((newAxis.y) / (_options.value?.grid?.y as number)) * (_options.value?.grid?.y as number);
+      moveAxis.x = Math.round((moveAxis.x) / (_options.value?.grid?.x as number)) * (_options.value?.grid?.x as number);
+      moveAxis.y = Math.round((moveAxis.y) / (_options.value?.grid?.y as number)) * (_options.value?.grid?.y as number);
+      newSize.width = Math.round((newSize.width) / (_options.value?.grid?.x as number)) * (_options.value?.grid?.x as number);
+      newSize.height = Math.round((newSize.height) / (_options.value?.grid?.y as number)) * (_options.value?.grid?.y as number);
+
+      // Limit execution to every 10px
+      if (Math.abs(moveAxis.x) % Math.round((_options.value?.grid?.x / 2)) > 2) {
+        return
+      }
+      // Good for both but only oneway
+      // if (Math.abs(moveAxis.x) < (50 + Math.abs(((state.x as number) - (stateTemp.x as number))))) return
+      if (newAxis.x < 10) {
+        newAxis.x = 0
+        moveAxis.x = -(stateTemp.x as number)
+      } else if (newAxis.x > container.width - stateTemp.width) {
+        newAxis.x = container.width - state.width
+        newSize.width = container.width - (stateTemp.x as number)
+      }
+
+      if (newAxis.y < 10) {
+        newAxis.y = 0
+        moveAxis.y = -(stateTemp.y as number)
+      } else if (newAxis.y > container.height - 10) {
+        newAxis.y = container.height - state.height
+        newSize.height = container.height - (stateTemp.y as number)
+      }
+    }
 
 
     switch (direction) {
       case "top":
-        if (!_options.value?.drag?.disabled) {
-          state.y = _top + dy;
-        }
-        state.height = _height + -(dy);
+        if (!_options.value?.drag?.disabled)
+          state.y = newAxis.y;
+        state.height = stateTemp.height as number + -moveAxis.y;
         break;
       case "right":
-        if (!_options.value?.drag?.disabled) {
-          if (_options.value?.grid?.stickToGrid) {
-            const stickX = Math.round((dx) / (_options.value?.grid?.x as number)) * (_options.value?.grid?.x as number);
-            state.width = _width + stickX;
-          } else {
-            state.x = newX;
-          }
-        } else {
-          state.width = _width + dx;
-        }
+        state.width = newSize.width
         break;
       case "bottom":
-        state.height = _height + dy;
+        state.height = newSize.height
         break;
       case "left":
-        if (!_options.value?.drag?.disabled) {
-          if (_options.value?.grid?.stickToGrid) {
-            const stickX = Math.round((newX) / (_options.value?.grid?.x as number)) * (_options.value?.grid?.x as number);
-            state.x = stickX;
-            state.width = _width + (_left - stickX);
-          } else {
-            state.x = newX;
-          }
-        } else {
-
-          state.width = _width + -(dx);
-        }
+        if (!_options.value?.drag?.disabled)
+          state.x = newAxis.x;
+        state.width = stateTemp.width + -moveAxis.x;
         break;
     }
-    props.onResizeMove?.(state);
+    props.onResizeMove?.({ ...state, ...position.value });
+
   };
 
-  const onMouseUpHandler = (e: MouseEvent) => {
+  const onResizeEnd = (e: MouseEvent) => {
 
-    itemRef.value?.style.removeProperty('cursor');
+    console.log('disable resize');
+
     state.isResizing = false;
-    document.removeEventListener('mousemove', onMouseMoveHandler);
-    document.removeEventListener('mouseup', onMouseUpHandler);
+    itemRef.value?.style.removeProperty('cursor');
+    document.body.style.removeProperty('cursor');
+    document.removeEventListener('mousemove', onResizeMove);
+    document.removeEventListener('mouseup', onResizeEnd);
+
     props.onResizeEnd?.(state);
   };
 
-  document.addEventListener('mousemove', onMouseMoveHandler);
-  document.addEventListener('mouseup', onMouseUpHandler);
+  document.addEventListener('mousemove', onResizeMove);
+  document.addEventListener('mouseup', onResizeEnd);
 };
 
 /**
@@ -209,68 +236,75 @@ const onMouseDownContainer = (e: MouseEvent) => {
     height: itemRef.value?.parentElement?.offsetHeight as number
   }
 
-  let x = e.clientX;
-  let y = e.clientY;
+  const axis = {
+    x: e.clientX,
+    y: e.clientY
+  }
 
-  let _top = state.y;
-  let _left = state.x;
+  const stateTemp = deepMerge(state, position.value) as DraggifyState;
 
   state.isDragging = true;
 
-
   (itemRef.value?.style as CSSStyleDeclaration).cursor = 'move';
 
-  const onMouseMoveHandler = (e: MouseEvent) => {
-    const dx = e.clientX - x;
-    const dy = e.clientY - y;
+  const onDragging = (e: MouseEvent) => {
+    const moveAxis = {
+      x: e.clientX - axis.x,
+      y: e.clientY - axis.y
+    }
 
-    const newX = _left + dx;
-    const newY = _top + dy;
+    // Return if no movement
+    if (!moveAxis.x && !moveAxis.y) return
 
-    if (_options.value?.drag?.direction === 'a' || _options.value?.drag?.direction === 'x') {
-      if (newX < 10) {
-        state.x = 0
-      } else if (newX > (container.width - state.width - 5)) {
-        state.x = container.width - state.width
-      } else {
+    let newAxis = {
+      x: stateTemp.x as number + moveAxis.x,
+      y: stateTemp.y as number + moveAxis.y
+    }
 
-        if (_options.value?.grid?.stickToGrid) {
-          const stickX = Math.round((newX) / (_options.value?.grid?.x as number)) * (_options.value?.grid?.x as number);
-          state.x = stickX;
-        } else {
-          state.x = newX;
-        }
+    if (_options.value?.grid?.stickToGrid) {
+      newAxis.x = Math.round((newAxis.x) / (_options.value?.grid?.x as number)) * (_options.value?.grid?.x as number);
+      newAxis.y = Math.round((newAxis.y) / (_options.value?.grid?.y as number)) * (_options.value?.grid?.y as number);
+
+      // Limit execution to every 10px
+      // if (Math.abs(moveAxis.x) % Math.round((_options.value?.grid?.x / 2)) > 2) {
+      //   return
+      // }
+      // Good for both but only oneway
+      // if (Math.abs(moveAxis.x) < (50 + Math.abs(((state.x as number) - (stateTemp.x as number))))) return
+      if (newAxis.x < 10) {
+        newAxis.x = 0
+      } else if (newAxis.x > container.width - state.width) {
+        newAxis.x = container.width - state.width
+      }
+
+      if (newAxis.y < 10) {
+        newAxis.y = 0
+      } else if (newAxis.y > container.height - state.height) {
+        newAxis.y = container.height - state.height
       }
     }
-    if (_options.value?.drag?.direction === 'a' || _options.value?.drag?.direction === 'y') {
-      if (newY < 10) {
-        state.y = 0
-      } else if (newY > (container.height - state.height - 10)) {
-        state.y = container.height as number - state.height
-      } else {
-        if (_options.value.grid?.stickToGrid) {
-          const stickY = Math.round((_top + dy) / (_options.value?.grid?.y as number)) * (_options.value?.grid?.y as number);
-          state.y = stickY;
-        } else {
-          state.y = newY;
-        }
-      }
+
+    if (['a', 'x'].includes(_options.value?.drag?.direction as string)) {
+      state.x = newAxis.x;
     }
-    props.onDragMove?.(state);
+    if (['a', 'y'].includes(_options.value?.drag?.direction as string)) {
+      state.y = newAxis.y;
+    }
+    props.onDragMove?.({ ...state, ...position.value });
   }
 
-  const onMouseUpHandler = (e: MouseEvent) => {
+  const onDragEnd = (e: MouseEvent) => {
 
     itemRef.value?.style.removeProperty('cursor');
     state.isDragging = false;
-    document.removeEventListener('mousemove', onMouseMoveHandler);
-    document.removeEventListener('mouseup', onMouseUpHandler);
+    document.removeEventListener('mousemove', onDragging);
+    document.removeEventListener('mouseup', onDragEnd);
 
     props.onDragEnd?.(state);
   };
 
-  document.addEventListener('mousemove', onMouseMoveHandler);
-  document.addEventListener('mouseup', onMouseUpHandler);
+  document.addEventListener('mousemove', onDragging);
+  document.addEventListener('mouseup', onDragEnd);
 
 };
 </script>
@@ -279,6 +313,7 @@ const onMouseDownContainer = (e: MouseEvent) => {
 .draggify-item {
   position: absolute;
   cursor: move;
+  user-select: none;
 
 
 
@@ -296,7 +331,7 @@ const onMouseDownContainer = (e: MouseEvent) => {
       border-radius: 5px;
 
       &.draggify-resizer-top {
-        top: 0;
+        top: -3px;
         left: 0;
         right: 0;
         width: 100%;
@@ -306,7 +341,7 @@ const onMouseDownContainer = (e: MouseEvent) => {
 
       &.draggify-resizer-right {
         top: 0;
-        right: 0;
+        right: -3px;
         bottom: 0;
         height: 100%;
         width: 5px;
@@ -315,7 +350,7 @@ const onMouseDownContainer = (e: MouseEvent) => {
 
       &.draggify-resizer-bottom {
         left: 0;
-        bottom: 0;
+        bottom: -3px;
         right: 0;
         width: 100%;
         height: 5px;
@@ -324,7 +359,7 @@ const onMouseDownContainer = (e: MouseEvent) => {
 
       &.draggify-resizer-left {
         top: 0;
-        left: 0;
+        left: -3px;
         bottom: 0;
         height: 100%;
         width: 5px;
@@ -333,8 +368,6 @@ const onMouseDownContainer = (e: MouseEvent) => {
 
     }
   }
-
-
 
   &.draggify-item-style {
     background-color: #ffffff;

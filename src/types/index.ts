@@ -1,10 +1,11 @@
+import { exportDefaultDeclaration } from '@babel/types';
+
 export type DraggifyDirection = 't' | 'r' | 'b' | 'l' | 'x' | 'y' | 'a';
 
 export * from '../components/Draggify.vue';
 
 export interface DraggifyProps {
-  size: DraggifySize;
-  position: DraggifyPosition;
+  modelValue: DraggifyInput;
   options?: DraggifyOptions;
   onDragMove?: (size: DraggifySize) => void;
   onDragEnd?: (size: DraggifySize) => void;
@@ -46,16 +47,25 @@ export interface DraggifySize {
   width: number;
   height: number;
 }
-export interface DraggifyPosition {
+export interface DraggifyAxis {
   x: number;
   y: number;
 }
+export interface DraggifyPosition {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
 
-export interface DraggifyState {
+export interface DraggifyInput {
   width: number;
   height: number;
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
+};
+
+export interface DraggifyState extends DraggifyInput, DraggifyPosition {
   isDragging?: boolean;
   isResizing?: boolean;
 }

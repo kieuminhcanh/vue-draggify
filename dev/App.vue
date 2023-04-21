@@ -33,7 +33,7 @@
     </v-app-bar>
     <v-main>
       <VContainer>
-        <VCard width="800" height="600" style="position: relative;">
+        <VCard width="825" height="600" style="position: relative;">
           <Draggify v-bind="config" v-for="config in configs">
             <v-list-item prepend-avatar="https://cdn.vuetifyjs.com/images/john.png" title="John Leider"
               subtitle="john@google.com">
@@ -56,46 +56,21 @@ import { DraggifyProps } from "../src/types";
 
 const configs = ref<DraggifyProps[]>([
   {
-    size: {
-      width: 300,
+    modelValue: {
+      width: 250,
       height: 56,
-    },
-    position: {
-      x: 0,
-      y: 0,
+      x: 300,
+      y: 300,
     },
     options: {
       grid: {
         stickToGrid: true,
         x: 100,
-        y: 10,
+        y: 50,
       },
       resize: {
         direction: 'a',
         handle: 'click'
-      }
-    }
-  },
-  {
-    size: {
-      width: 300,
-      height: 56,
-    },
-    position: {
-      x: 350,
-      y: 0,
-    },
-    options: {
-      grid: {
-        stickToGrid: false,
-        x: 10,
-        y: 10,
-      },
-      resize: {
-        direction: 'x',
-      },
-      drag: {
-        direction: 'y'
       }
     }
   },
