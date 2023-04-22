@@ -1,4 +1,17 @@
-export const inRange = (input: number, min: number = 0, max: number = 0) => input >= min && input <= max
+export const inRange = (input: number, min: number = 0, max: number = 0, compare: "[]" | "[)" | "(]" | "()" = "[]") => {
+  switch (compare) {
+    case "[]":
+      return input >= min && input <= max
+    case "[)":
+      return input >= min && input < max
+    case "(]":
+      return input > min && input <= max
+    case "()":
+      return input > min && input < max
+    default:
+      return false
+  }
+}
 
 export function mergeObjects(objA: any, objB: any) {
   const merged = { ...objA };

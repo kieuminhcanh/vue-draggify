@@ -1,11 +1,13 @@
 import { exportDefaultDeclaration } from '@babel/types';
+import { Ref } from 'vue';
 
-export type DraggifyDirection = 't' | 'r' | 'b' | 'l' | 'x' | 'y' | 'a';
+export type DraggifyDirection = 'top' | 'right' | 'bottom' | 'left' | 'x' | 'y' | 'all';
 
 export * from '../components/Draggify.vue';
 
 export interface DraggifyProps {
   modelValue: DraggifyInput;
+  color: String;
   options?: DraggifyOptions;
   onDragMove?: (size: DraggifySize) => void;
   onDragEnd?: (size: DraggifySize) => void;
@@ -20,11 +22,11 @@ export interface DraggifyGridOptions {
 }
 
 export interface DraggifyOptions {
-  style?: DraggifyStyleOptions;
-  container?: DraggifySize;
-  grid?: DraggifyGridOptions;
-  resize?: DraggifyResizeOptions
-  drag?: DraggifyDragOptions
+  container?: Ref<HTMLElement> | DraggifySize | null;
+  style: DraggifyStyleOptions;
+  grid: DraggifyGridOptions;
+  resize: DraggifyResizeOptions
+  drag: DraggifyDragOptions
 
 }
 
@@ -37,6 +39,8 @@ export interface DraggifyResizeOptions {
   direction: DraggifyDirection;
   color?: string;
   handle?: 'click' | 'hover';
+  minWidth: number;
+  minHeight: number;
 }
 export interface DraggifyDragOptions {
   disabled?: boolean;
@@ -46,6 +50,8 @@ export interface DraggifyDragOptions {
 export interface DraggifySize {
   width: number;
   height: number;
+  nWidth?: number;
+  nHeight?: number;
 }
 export interface DraggifyAxis {
   x: number;

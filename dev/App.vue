@@ -39,7 +39,6 @@
               subtitle="john@google.com">
             </v-list-item>
           </Draggify>
-
         </VCard>
       </VContainer>
     </v-main>
@@ -47,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { VContainer, VSheet } from "vuetify/components";
+import { VContainer, VList, VSheet } from "vuetify/components";
 import { ref } from "vue";
 import Draggify from "../src/components/Draggify.vue";
 import { reactive } from "vue";
@@ -69,12 +68,30 @@ const configs = ref<DraggifyProps[]>([
         y: 50,
       },
       resize: {
-        direction: 'a',
+        direction: 'all',
         handle: 'click'
       }
     }
   },
-
+  {
+    modelValue: {
+      width: 250,
+      height: 56,
+      x: 150,
+      y: 100,
+    },
+    options: {
+      grid: {
+        stickToGrid: true,
+        x: 100,
+        y: 50,
+      },
+      resize: {
+        direction: 'y',
+        handle: 'click'
+      }
+    }
+  },
 ])
 
 </script>

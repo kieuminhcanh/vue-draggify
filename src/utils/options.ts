@@ -6,12 +6,14 @@ export const defaultOptions: DraggifyOptions = {
     marginY: 0,
   },
   resize: {
-    direction: 'a',
+    direction: 'all',
     color: 'rgba(0, 0, 0, 0.5)',
     handle: 'hover',
+    minWidth: 50,
+    minHeight: 50,
   },
   drag: {
-    direction: 'a',
+    direction: 'all',
   },
   grid: {
     stickToGrid: false,
