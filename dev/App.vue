@@ -53,7 +53,7 @@ import { reactive } from "vue";
 import { VCard } from "vuetify/components";
 import { DraggifyProps } from "../src/types";
 
-const configs = ref<DraggifyProps[]>([
+const configs = ref([
   {
     modelValue: {
       width: 250,

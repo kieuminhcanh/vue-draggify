@@ -22,7 +22,7 @@ export interface DraggifyGridOptions {
 }
 
 export interface DraggifyOptions {
-  container?: Ref<HTMLElement> | DraggifySize | null;
+  container: DraggifySize;
   style: DraggifyStyleOptions;
   grid: DraggifyGridOptions;
   resize: DraggifyResizeOptions
@@ -72,6 +72,12 @@ export interface DraggifyInput {
 };
 
 export interface DraggifyState extends DraggifyInput, DraggifyPosition {
-  isDragging?: boolean;
-  isResizing?: boolean;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
 }

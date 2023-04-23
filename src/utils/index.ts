@@ -31,3 +31,9 @@ export function mergeObjects(objA: any, objB: any) {
 
   return merged;
 }
+
+
+export const getState = ({ ...args }: any) => {
+  const { width, height, x, y } = args;
+  return { width, height, x, y, top: y, right: x + width, bottom: y + height, left: x };
+}

@@ -16,7 +16,7 @@ export const defaultOptions: DraggifyOptions = {
     direction: 'all',
   },
   grid: {
-    stickToGrid: false,
+    stickToGrid: true,
     x: 10,
     y: 10,
   },
