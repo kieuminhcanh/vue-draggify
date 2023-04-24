@@ -34,7 +34,7 @@
     <v-main>
       <VContainer>
         <VCard width="825" height="600" style="position: relative;">
-          <Draggify v-bind="config" v-for="config in configs">
+          <Draggify v-bind="config" v-for="config in configs" @update:modelValue="updateModel($event, config)">
             <v-list-item prepend-avatar="https://cdn.vuetifyjs.com/images/john.png" title="John Leider"
               subtitle="john@google.com">
             </v-list-item>
@@ -53,7 +53,7 @@ import { reactive } from "vue";
 import { VCard } from "vuetify/components";
 import { DraggifyProps } from "../src/types";
 
-const configs = ref([
+const configs = reactive([
   {
     modelValue: {
       width: 250,
@@ -93,6 +93,14 @@ const configs = ref([
     }
   },
 ])
+
+const updateModel = (data, config: any) => {
+  console.log(data);
+  config.modelValue = {
+    ...config.modelValue,
+    ...data
+  };
+}
 
 </script>
 

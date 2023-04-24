@@ -4,21 +4,27 @@
     <div class="draggify-content">
       <slot></slot>
     </div>
+    <div class="draggify-resizer draggify-resizer-top-left" @mousedown.stop="onResizeStart($event, 'top-left')"></div>
     <div class="draggify-resizer draggify-resizer-top" @mousedown.stop="onResizeStart($event, 'top')"></div>
     <div class="draggify-resizer draggify-resizer-right" @mousedown.stop="onResizeStart($event, 'right')"></div>
     <div class="draggify-resizer draggify-resizer-bottom" @mousedown.stop="onResizeStart($event, 'bottom')"></div>
     <div class="draggify-resizer draggify-resizer-left" @mousedown.stop="onResizeStart($event, 'left')"></div>
+    <div class="draggify-resizer draggify-resizer-top-right" @mousedown.stop="onResizeStart($event, 'top-right')"></div>
+    <div class="draggify-resizer draggify-resizer-bottom-left" @mousedown.stop="onResizeStart($event, 'bottom-left')">
+    </div>
+    <div class="draggify-resizer draggify-resizer-bottom-right" @mousedown.stop="onResizeStart($event, 'bottom-right')">
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 
-import { CSSProperties, PropType, computed, ref } from 'vue';
+import { CSSProperties, EmitsOptions, PropType, computed, reactive, ref } from 'vue';
 import { DraggifyDirection, DraggifyGridOptions, DraggifyOptions, DraggifySize, DraggifyState } from '../types';
 import { DraggifyAxis } from "../types";
 import deepMerge from 'deepmerge';
 import { defaultOptions } from "../utils/options";
-import { useCurrentElement, useElementHover, useParentElement, useEventListener, useVModels } from '@vueuse/core'
+import { useCurrentElement, useElementHover, useParentElement, useEventListener, useVModels, reactify } from '@vueuse/core'
 import { clamp } from '@vueuse/core';
 import { getState, inRange } from '../utils';
 
@@ -84,7 +90,7 @@ const emits = defineEmits<{
   (e: 'onDrop', event: DragEvent, data: DraggifyState): void
   (e: 'onDragEnd', event: DragEvent, data: DraggifyState): void
   (e: 'onResizeStart', event: MouseEvent, data: DraggifyState): void
-  (e: 'onResizeMove', event: MouseEvent, data: DraggifyState): void
+  (e: 'onResizeMove', event: MouseEvent, data: DraggifyState, direction: DraggifyDirection): void
   (e: 'onResizeEnd', event: MouseEvent, data: DraggifyState): void
   (e: 'update:modelValue', value: any): void
   (e: 'update:draggable', value: boolean): void
@@ -111,6 +117,11 @@ const rootBounding = computed(() => {
   return { width, height, x, y, top, left, right, bottom, }
 });
 
+
+const submitEmits = (eventName: any, e: DragEvent | MouseEvent, data: any) => {
+  emits('update:modelValue', data)
+  emits(eventName, e, data)
+}
 /**
  * Options
  */
@@ -121,7 +132,7 @@ const options = computed(() => deepMerge(defaultOptions, props.options))
  */
 const container = computed(() => {
   if (!options.value.container) {
-    const containerRef = useParentElement();
+    const containerRef = useParentElement(rootElement);
     return {
       width: containerRef.value?.clientWidth as number,
       height: containerRef.value?.clientHeight as number,
@@ -250,21 +261,19 @@ const onDragStart = (e: DragEvent) => {
       y: temp.y + axisEnd.y
     }
 
-    axisNew = {
-      x: clamp(axisNew.x, 0, (container.value as DraggifySize).width - rootBounding.value.width),
-      y: clamp(axisNew.y, 0, (container.value as DraggifySize).height - rootBounding.value.height),
-    }
-
     if (options.value.grid.stickToGrid) {
-      axisNew.x = Math.round(axisNew.x / options.value?.grid.x) * options.value.grid.x;
-      axisNew.y = Math.round(axisNew.y / options.value?.grid.y) * options.value.grid.y;
+      axisNew.x = Math.round(axisNew.x / options.value.grid.x) * options.value.grid.x;
+      axisNew.y = Math.round(axisNew.y / options.value.grid.y) * options.value.grid.y;
     }
 
-    updateAxisItem(axisNew)
+    let data = {
+      x: clamp(axisNew.x, 0, container.value.width - rootBounding.value.width),
+      y: clamp(axisNew.y, 0, container.value.height - rootBounding.value.height),
+      width: temp.width,
+      height: temp.height
+    }
 
-    const data = getState({ ...temp, ...axisNew })
-
-    emits('onDrop', e, data)
+    submitEmits('onDrop', e, data)
   })
 
 
@@ -293,7 +302,7 @@ const onDragStart = (e: DragEvent) => {
  * @param e 
  * @param direction 
  */
-const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "left") => {
+const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "left" | "top-left" | "top-right" | "bottom-left" | "bottom-right") => {
   draggable.value = false
   const resizer = e.target as HTMLDivElement
   resizer.style.cursor = 'col-resize'
@@ -314,40 +323,73 @@ const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "l
       y: e.clientY - axisStart.y
     }
 
-    let axisNew = {
-      x: temp.x as number + moveAxis.x,
-      y: temp.y as number + moveAxis.y,
-    }
-
-    const axisLimit = {
-      minX: 0,
-      minY: 0,
-      maxX: temp.x + temp.width - options.value.resize.minWidth,
-      maxY: temp.y + temp.height - options.value.resize.minHeight,
-    }
-
-    axisNew = {
-      x: clamp(axisNew.x, axisLimit.minX, axisLimit.maxX),
-      y: clamp(axisNew.y, axisLimit.minY, axisLimit.maxY),
+    const axisNew = {
+      x: temp.x + moveAxis.x,
+      y: temp.y + moveAxis.y,
+      width: temp.width + moveAxis.x,
+      height: temp.height + moveAxis.y
     }
 
 
-    const sizeNew = {
-      width: clamp(temp.width + moveAxis.x, options.value.resize.minWidth, container.value.width - temp.x),
-      height: clamp(temp.height + moveAxis.y, options.value.resize.minHeight, container.value.height - temp.y),
-      nWidth: inRange(axisNew.x, axisLimit.minX, axisLimit.maxX, "()")
-        ? temp.width + -moveAxis.x : state.value.width,
-      nHeight: inRange(axisNew.y, axisLimit.minY, axisLimit.maxY, "()") ? temp.height + -moveAxis.y : state.value.height,
+    let data = { x: 0, y: 0, width: 0, height: 0 }
+
+    switch (direction) {
+      case "top":
+        data.x = temp.x
+        data.y = clamp(axisNew.y, 0, temp.y + temp.height - options.value.resize.minHeight)
+        data.width = temp.width
+        data.height = temp.height - (data.y - temp.y)
+        break;
+      case "right":
+        data.x = temp.y
+        data.y = temp.y
+        data.width = clamp(axisNew.width, options.value.resize.minWidth, container.value.width - temp.x)
+        data.height = temp.height
+        break;
+      case "bottom":
+        data.x = temp.x
+        data.y = temp.y
+        data.width = temp.width
+        data.height = clamp(axisNew.height, options.value.resize.minHeight, container.value.height - temp.y)
+        break;
+      case "left":
+        data.x = clamp(axisNew.x, 0, temp.x + temp.width - options.value.resize.minWidth)
+        data.y = temp.y
+        data.width = temp.width - (data.x - temp.x)
+        data.height = temp.height
+        break;
+      case "top-left":
+        data.x = clamp(axisNew.x, 0, temp.x + temp.width - options.value.resize.minWidth)
+        data.y = clamp(axisNew.y, 0, temp.y + temp.height - options.value.resize.minHeight)
+        data.width = temp.width - (data.x - temp.x)
+        data.height = temp.height - (data.y - temp.y)
+        break;
+      case "top-right":
+        data.x = temp.x
+        data.y = clamp(axisNew.y, 0, temp.y + temp.height - options.value.resize.minHeight)
+        data.width = clamp(axisNew.width, options.value.resize.minWidth, container.value.width - temp.x)
+        data.height = temp.height - (data.y - temp.y)
+        break;
+      case "bottom-left":
+        data.x = clamp(axisNew.x, 0, temp.x + temp.width - options.value.resize.minWidth)
+        data.y = temp.y
+        data.width = temp.width - (data.x - temp.x)
+        data.height = clamp(axisNew.height, options.value.resize.minHeight, container.value.height - temp.y)
+        break;
+      case "bottom-right":
+        data.x = temp.x
+        data.y = temp.y
+        data.width = clamp(axisNew.width, options.value.resize.minWidth, container.value.width - temp.x)
+        data.height = clamp(axisNew.height, options.value.resize.minHeight, container.value.height - temp.y)
+        break;
+      default:
+        break;
     }
 
-    updateAxisItem(axisNew, direction)
-    updateSizeItem(sizeNew, direction)
-    // console.log('Resizing', sizeNew);
-
-    const data = getState({ ...temp, ...axisNew, ...sizeNew })
-    emits('onResizeMove', e, data)
-
+    submitEmits('onResizeMove', e, data)
   });
+
+
 
   const removeResizeEnd = useEventListener(document, 'mouseup', (e) => {
     resizer.style.removeProperty('cursor')
@@ -368,16 +410,16 @@ const updateAxisItem = (axis: DraggifyAxis, direction: DraggifyDirection = "all"
         ...axis
       })
       break;
-    case 'left':
-      emits('update:modelValue', {
-        ...modelValue.value,
-        x: axis.x
-      })
-      break;
     case 'top':
       emits('update:modelValue', {
         ...modelValue.value,
         y: axis.y
+      })
+      break;
+    case 'left':
+      emits('update:modelValue', {
+        ...modelValue.value,
+        x: axis.x
       })
       break;
   }
@@ -488,6 +530,50 @@ const updateSizeItem = (size: DraggifySize, direction: DraggifyDirection) => {
       border-bottom-left-radius: 5px;
     }
 
+    &.draggify-resizer-top-left {
+      top: 0;
+      left: 0;
+      height: 10px;
+      width: 10px;
+      cursor: nw-resize;
+      background-color: red;
+      border-top-left-radius: 5px;
+      border-bottom-left-radius: 5px;
+    }
+
+    &.draggify-resizer-top-right {
+      top: 0;
+      right: 0;
+      height: 10px;
+      width: 10px;
+      cursor: ne-resize;
+      background-color: red;
+      border-top-left-radius: 5px;
+      border-bottom-left-radius: 5px;
+    }
+
+    &.draggify-resizer-bottom-left {
+      bottom: 0;
+      left: 0;
+      height: 10px;
+      width: 10px;
+      cursor: ne-resize;
+      background-color: red;
+      border-top-left-radius: 5px;
+      border-bottom-left-radius: 5px;
+    }
+
+    &.draggify-resizer-bottom-right {
+      bottom: 0;
+      right: 0;
+      height: 10px;
+      width: 10px;
+      cursor: nw-resize;
+      background-color: red;
+      border-top-left-radius: 5px;
+      border-bottom-left-radius: 5px;
+    }
+
   }
 
   &.draggify-resizer-direction-all {
@@ -506,6 +592,22 @@ const updateSizeItem = (size: DraggifySize, direction: DraggifyDirection) => {
       }
 
       &.draggify-resizer-left {
+        visibility: visible;
+      }
+
+      &.draggify-resizer-top-left {
+        visibility: visible;
+      }
+
+      &.draggify-resizer-top-right {
+        visibility: visible;
+      }
+
+      &.draggify-resizer-bottom-left {
+        visibility: visible;
+      }
+
+      &.draggify-resizer-bottom-right {
         visibility: visible;
       }
     }
