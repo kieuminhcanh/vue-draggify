@@ -1,6 +1,6 @@
 import { DraggifyOptions } from "../types";
 
-export const defaultOptions: DraggifyOptions = {
+export const defaultOptions = {
   style: {
     disabled: false,
     marginY: 0,
