@@ -34,8 +34,8 @@
     <v-main>
       <VContainer>
         <VCard width="825" height="600" style="position: relative;">
-          <!-- @update:modelValue="updateModel($event, config)" -->
-          <Draggify :model-value="config.modelValue" :options="config.options" v-for="config in configs">
+
+          <Draggify :modelValue="config.modelValue" :options="config.options" v-for="config in configs" return-object>
             <v-list-item prepend-avatar="https://cdn.vuetifyjs.com/images/john.png" title="John Leider"
               subtitle="john@google.com">
             </v-list-item>
@@ -49,7 +49,8 @@
 <script setup lang="ts">
 import { VContainer, VList, VSheet } from "vuetify/components";
 import { ref } from "vue";
-import Draggify from "../src/components/Draggify.vue";
+// import Draggify from "../src/components/Draggify.vue";
+import Draggify from "../src/components/DraggifyEager.vue";
 import { reactive } from "vue";
 import { VCard } from "vuetify/components";
 import { DraggifyProps } from "../src/types";

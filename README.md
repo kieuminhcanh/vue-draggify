@@ -1,11 +1,11 @@
-# Vuetify Draggify
+# Draggify
 
-Draggify is a drag and drop component for Vue. It also includes a resize grid component.
+vue-draggify is a Vue.js plugin that enables drag and drop functionality for HTML elements.
 
 ## Installation
 
 ```bash
-$npm install vue-draggify
+$ npm install vue-draggify
 ```
 
 ## Usage

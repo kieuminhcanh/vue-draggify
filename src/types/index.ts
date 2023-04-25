@@ -65,10 +65,11 @@ export interface DraggifyPosition {
 }
 
 export interface DraggifyInput {
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
   x?: number;
   y?: number;
+  [key: string]: any;
 };
 
 export interface DraggifyState extends DraggifyInput, DraggifyPosition {
@@ -76,8 +77,4 @@ export interface DraggifyState extends DraggifyInput, DraggifyPosition {
   height: number;
   x: number;
   y: number;
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
 }

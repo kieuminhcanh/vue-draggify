@@ -1,13 +1,10 @@
 <script setup lang="ts">
 
-import { CSSProperties, EmitsOptions, PropType, computed, reactive, ref, watch } from 'vue';
-import { DraggifyDirection, DraggifyGridOptions, DraggifyOptions, DraggifySize, DraggifyState } from '../types';
-import { DraggifyAxis } from "../types";
+import { CSSProperties, PropType, computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { DraggifyDirection, DraggifyGridOptions, DraggifyState, DraggifyInput } from '../types';
 import deepMerge from 'deepmerge';
 import { defaultOptions } from "../utils/options";
-import { useCurrentElement, useElementHover, useParentElement, useEventListener } from '@vueuse/core'
-import { clamp } from '@vueuse/core';
-import { useMotion, useElementStyle, reactiveStyle } from '@vueuse/motion'
+import { useCurrentElement, useElementHover, useParentElement, useEventListener, clamp } from '@vueuse/core'
 
 
 const props = defineProps({
@@ -19,7 +16,11 @@ const props = defineProps({
       y?: number;
       [key: string]: any;
     }>,
-    required: true,
+    default: () => ({}),
+  },
+  returnObject: {
+    type: Boolean,
+    default: false,
   },
   fixed: {
     type: Boolean,
@@ -88,28 +89,43 @@ const emit = defineEmits<{
 const draggable = ref<boolean>(props.draggable)
 const resizeable = ref<boolean>(props.resizeable)
 
-const modelValue = computed({
-  get: () => reactive(props.modelValue),
-  set: (value: any) => emit('update:modelValue', value),
-});
-
 const rootElement = useCurrentElement<HTMLElement>();
 
-const rootBounding = computed(() => {
-  const width = Math.round(rootElement.value?.clientWidth || parseInt(rootElement.value?.style.width || '0'))
-  const height = Math.round(rootElement.value?.clientHeight || parseInt(rootElement.value?.style.height || '0'))
-  const x = Math.round(parseInt(rootElement.value?.style.left || '0'))
-  const y = Math.round(parseInt(rootElement.value?.style.top || '0'))
-  const top = Math.round(parseInt(rootElement.value?.style.top) || y)
-  const left = Math.round(parseInt(rootElement.value?.style.left) || x)
-  const right = Math.round(parseInt(rootElement.value?.style.left) || left + width)
-  const bottom = Math.round(parseInt(rootElement.value?.style.bottom) || top + height)
+const state = !props.returnObject ? ref<DraggifyInput>(props.modelValue)
+  : computed<DraggifyInput>({
+    get: () => props.modelValue,
+    set: (value) => emit('update:modelValue', value)
+  })
 
-  return { width, height, x, y, top, left, right, bottom, }
-});
+if (!props.returnObject) {
+  watch(() => props.modelValue, (value) => {
+    console.log('modelValue just updated', value);
+
+    state.value = { ...value }
+  }, { deep: true })
+}
+
+
+
+onMounted(() => {
+
+  // if (!props.modelValue) {
+  state.value = {
+    ...{
+      width: rootElement.value?.clientWidth,
+      height: rootElement.value?.clientHeight,
+      x: rootElement.value?.style.left ? parseInt(rootElement.value?.style.left) : rootElement.value?.offsetLeft,
+      y: rootElement.value?.style.top ? parseInt(rootElement.value?.style.top) : rootElement.value?.offsetTop,
+    }, ...props.modelValue
+  }
+  // }
+
+})
+
+onUnmounted(() => state.value = {})
 
 const submitEmits = (eventName: any, e: DragEvent | MouseEvent, data: any) => {
-  emit('update:modelValue', data)
+  state.value = { ...data }
   emit(eventName, e, data)
 }
 /**
@@ -138,16 +154,29 @@ const containerResizeDirectionClass = computed(() => {
   return isHovered.value && resizeable.value && options.value.resize.direction ? `draggify-resizer-direction-${options.value.resize.direction}` : undefined
 })
 
+/**
+ * Item styles
+ */
+// const { state: state, style: itemStyles } = reactiveStyle({
+//   userSelect: 'none',
+//   position: props.fixed ? 'fixed' : 'absolute',
+//   width: modelValue.value.width ?? rootBounding.value.width,
+//   height: modelValue.value.height ?? rootBounding.value.height,
+//   left: modelValue.value.x ?? rootBounding.value.left,
+//   top: modelValue.value.y ?? rootBounding.value.top,
+//   backgroundColor: props.color,
+// })
+
 const itemStyles = computed<CSSProperties>(() => {
 
   return {
     userSelect: 'none',
     position: props.fixed ? 'fixed' : 'absolute',
-    width: (modelValue.value.width ?? rootBounding.value.width) + 'px',
-    height: (modelValue.value.height ?? rootBounding.value.height) + 'px',
     backgroundColor: props.color,
-    left: (modelValue.value.x ?? rootBounding.value.left) + 'px',
-    top: (modelValue.value.y ?? rootBounding.value.top) + 'px',
+    width: `${state.value.width}px`,
+    height: `${state.value.height}px`,
+    left: `${state.value.x}px`,
+    top: `${state.value.y}px`,
   }
 });
 
@@ -155,21 +184,6 @@ const itemStyles = computed<CSSProperties>(() => {
  * Hover state
  */
 const isHovered = useElementHover(rootElement)
-
-
-/**
- * State
- */
-const state = computed<DraggifyState>(() => ({
-  width: modelValue.value.width ?? rootBounding.value.width,
-  height: modelValue.value.height ?? rootBounding.value.height,
-  x: modelValue.value.x ?? rootBounding.value.left,
-  y: modelValue.value.y ?? rootBounding.value.top,
-  top: modelValue.value.y as number,
-  left: modelValue.value.x as number,
-  right: (modelValue.value.x as number) + (modelValue.value.width as number),
-  bottom: (modelValue.value.y as number) + (modelValue.value.height as number),
-}))
 
 /**
  * Drag start event handler
@@ -194,10 +208,10 @@ const onDragStart = (e: DragEvent) => {
   }
 
   const temp = {
-    x: state.value.x,
-    y: state.value.y,
-    width: state.value.width,
-    height: state.value.height,
+    x: state.value.x as number,
+    y: state.value.y as number,
+    width: state.value.width as number,
+    height: state.value.height as number,
   }
 
   let data = { ...temp }
@@ -236,6 +250,7 @@ const onDragStart = (e: DragEvent) => {
     // emit('onDragLeave', e, data)
   })
 
+
   const removeDragOver = useEventListener(document, 'dragover', (e) => {
     // Need to prevent default to allow drop
     e.preventDefault();
@@ -261,8 +276,8 @@ const onDragStart = (e: DragEvent) => {
     }
 
     data = {
-      x: clamp(axisNew.x, 0, container.value.width - rootBounding.value.width),
-      y: clamp(axisNew.y, 0, container.value.height - rootBounding.value.height),
+      x: clamp(axisNew.x, 0, container.value.width - temp.width),
+      y: clamp(axisNew.y, 0, container.value.height - temp.height),
       width: temp.width,
       height: temp.height
     }
@@ -289,6 +304,7 @@ const onDragStart = (e: DragEvent) => {
   });
 };
 
+
 /**
  * Resize start event handler
  * @param e 
@@ -308,10 +324,10 @@ const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "l
   }
 
   const temp = {
-    x: state.value.x,
-    y: state.value.y,
-    width: state.value.width,
-    height: state.value.height,
+    x: state.value.x as number,
+    y: state.value.y as number,
+    width: state.value.width as number,
+    height: state.value.height as number,
   }
 
   let data = { ...temp }
@@ -407,6 +423,12 @@ const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "l
 const bindState = computed(() => {
   return {
     ...state.value,
+    ...{
+      top: state.value.y,
+      left: state.value.x,
+      right: state.value.x as number + (state.value.width as number),
+      bottom: state.value.y as number + (state.value.height as number),
+    }
   }
 })
 </script>
