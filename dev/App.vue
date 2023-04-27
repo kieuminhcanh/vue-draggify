@@ -35,10 +35,10 @@
       <VContainer>
         <VCard width="825" height="600" style="position: relative;">
 
-          <Draggify :modelValue="config.modelValue" :options="config.options" v-for="config in configs" return-object>
-            <v-list-item prepend-avatar="https://cdn.vuetifyjs.com/images/john.png" title="John Leider"
-              subtitle="john@google.com">
-            </v-list-item>
+          <Draggify :modelValue="config.modelValue" :options="config.options" v-for="config in configs" v-slot="{ x, y }">
+            <VListItem prepend-avatar="https://cdn.vuetifyjs.com/images/john.png" title="John Leider">
+              <VListItemSubtitle>{{ x }} - {{ y }}</VListItemSubtitle>
+            </VListItem>
           </Draggify>
         </VCard>
       </VContainer>
@@ -47,10 +47,10 @@
 </template>
 
 <script setup lang="ts">
-import { VContainer, VList, VSheet } from "vuetify/components";
+import { VContainer, VList, VSheet, VListItem, VListItemSubtitle } from "vuetify/components";
 import { ref } from "vue";
 // import Draggify from "../src/components/Draggify.vue";
-import Draggify from "../src/components/DraggifyEager.vue";
+import Draggify from "../src/components/DraggifyMove.vue";
 import { reactive } from "vue";
 import { VCard } from "vuetify/components";
 import { DraggifyProps } from "../src/types";
