@@ -7,4 +7,7 @@ export default {
   },
 };
 
+
+export { VueDraggify }
+
 export * from './types';

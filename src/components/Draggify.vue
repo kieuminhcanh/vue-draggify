@@ -1,13 +1,10 @@
 <script setup lang="ts">
 
-import { CSSProperties, EmitsOptions, PropType, computed, reactive, ref, watch } from 'vue';
-import { DraggifyDirection, DraggifyGridOptions, DraggifyOptions, DraggifySize, DraggifyState } from '../types';
-import { DraggifyAxis } from "../types";
+import { CSSProperties, PropType, computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { DraggifyDirection, DraggifyGridOptions, DraggifyState, DraggifyInput } from '../types';
 import deepMerge from 'deepmerge';
 import { defaultOptions } from "../utils/options";
-import { useCurrentElement, useElementHover, useParentElement, useEventListener } from '@vueuse/core'
-import { clamp } from '@vueuse/core';
-import { useMotion, useElementStyle, reactiveStyle } from '@vueuse/motion'
+import { useCurrentElement, useElementHover, useParentElement, useEventListener, clamp } from '@vueuse/core'
 
 
 const props = defineProps({
@@ -19,7 +16,15 @@ const props = defineProps({
       y?: number;
       [key: string]: any;
     }>,
-    required: true,
+    default: () => ({}),
+  },
+  returnObject: {
+    type: Boolean,
+    default: false,
+  },
+  dragType: {
+    type: String as PropType<'drag' | 'move'>,
+    default: 'drag'
   },
   fixed: {
     type: Boolean,
@@ -70,6 +75,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits<{
+  (e: 'onMouseDown', event: MouseEvent, data: any): void
+  (e: 'onMouseMove', event: MouseEvent, data: any): void
+  (e: 'onMouseUp', event: MouseEvent, data: any): void
+  (e: 'onHover', status: boolean): void
   (e: 'onDragStart', event: DragEvent, data: any): void
   (e: 'onDragMove', event: DragEvent, data: any): void
   (e: 'onDragEnter', event: DragEvent, data: any): void
@@ -88,28 +97,33 @@ const emit = defineEmits<{
 const draggable = ref<boolean>(props.draggable)
 const resizeable = ref<boolean>(props.resizeable)
 
-const modelValue = computed({
-  get: () => reactive(props.modelValue),
-  set: (value: any) => emit('update:modelValue', value),
-});
-
 const rootElement = useCurrentElement<HTMLElement>();
 
-const rootBounding = computed(() => {
-  const width = Math.round(rootElement.value?.clientWidth || parseInt(rootElement.value?.style.width || '0'))
-  const height = Math.round(rootElement.value?.clientHeight || parseInt(rootElement.value?.style.height || '0'))
-  const x = Math.round(parseInt(rootElement.value?.style.left || '0'))
-  const y = Math.round(parseInt(rootElement.value?.style.top || '0'))
-  const top = Math.round(parseInt(rootElement.value?.style.top) || y)
-  const left = Math.round(parseInt(rootElement.value?.style.left) || x)
-  const right = Math.round(parseInt(rootElement.value?.style.left) || left + width)
-  const bottom = Math.round(parseInt(rootElement.value?.style.bottom) || top + height)
+const state = !props.returnObject ? ref<DraggifyInput>(props.modelValue)
+  : computed<DraggifyInput>({
+    get: () => props.modelValue,
+    set: (value) => emit('update:modelValue', value)
+  })
 
-  return { width, height, x, y, top, left, right, bottom, }
-});
+if (!props.returnObject) {
+  watch(() => props.modelValue, (value) => {
+    state.value = { ...value }
+  }, { deep: true })
+}
+
+onMounted(() => {
+  state.value = {
+    ...{
+      width: rootElement.value?.clientWidth,
+      height: rootElement.value?.clientHeight,
+      x: rootElement.value?.style.left ? parseInt(rootElement.value?.style.left) : rootElement.value?.offsetLeft,
+      y: rootElement.value?.style.top ? parseInt(rootElement.value?.style.top) : rootElement.value?.offsetTop,
+    }, ...props.modelValue
+  }
+})
 
 const submitEmits = (eventName: any, e: DragEvent | MouseEvent, data: any) => {
-  emit('update:modelValue', data)
+  state.value = { ...data }
   emit(eventName, e, data)
 }
 /**
@@ -131,62 +145,34 @@ const container = computed(() => {
   return options.value.container
 });
 
-/**
- * Container resize direction class
- */
-const containerResizeDirectionClass = computed(() => {
-  return isHovered.value && resizeable.value && options.value.resize.direction ? `draggify-resizer-direction-${options.value.resize.direction}` : undefined
-})
 
 const itemStyles = computed<CSSProperties>(() => {
 
   return {
     userSelect: 'none',
     position: props.fixed ? 'fixed' : 'absolute',
-    width: (modelValue.value.width ?? rootBounding.value.width) + 'px',
-    height: (modelValue.value.height ?? rootBounding.value.height) + 'px',
     backgroundColor: props.color,
-    left: (modelValue.value.x ?? rootBounding.value.left) + 'px',
-    top: (modelValue.value.y ?? rootBounding.value.top) + 'px',
+    width: `${state.value.width}px`,
+    height: `${state.value.height}px`,
+    left: `${state.value.x}px`,
+    top: `${state.value.y}px`,
   }
 });
 
 /**
  * Hover state
  */
-const isHovered = useElementHover(rootElement)
-
-
-/**
- * State
- */
-const state = computed<DraggifyState>(() => ({
-  width: modelValue.value.width ?? rootBounding.value.width,
-  height: modelValue.value.height ?? rootBounding.value.height,
-  x: modelValue.value.x ?? rootBounding.value.left,
-  y: modelValue.value.y ?? rootBounding.value.top,
-  top: modelValue.value.y as number,
-  left: modelValue.value.x as number,
-  right: (modelValue.value.x as number) + (modelValue.value.width as number),
-  bottom: (modelValue.value.y as number) + (modelValue.value.height as number),
-}))
+const isHovering = ref<boolean>(false)
 
 /**
  * Drag start event handler
  * @param e 
  */
-const onDragStart = (e: DragEvent) => {
-  if (e.dataTransfer) {
-    e.dataTransfer.clearData();
-  }
-
+const onMoveStart = (e: MouseEvent) => {
   resizeable.value = false
 
-  if (e.dataTransfer) {
-    e.dataTransfer.setData('text/plain', rootElement.value.innerHTML);
-    e.dataTransfer.effectAllowed = "move";
-    rootElement.value.classList.add('dragging');
-  }
+
+  rootElement.value.classList.add('dragging');
 
   const axisStart = {
     x: e.clientX,
@@ -194,57 +180,15 @@ const onDragStart = (e: DragEvent) => {
   }
 
   const temp = {
-    x: state.value.x,
-    y: state.value.y,
-    width: state.value.width,
-    height: state.value.height,
+    x: state.value.x as number,
+    y: state.value.y as number,
+    width: state.value.width as number,
+    height: state.value.height as number,
   }
 
   let data = { ...temp }
 
-  // emit('onDragStart', e, data)
-
-  const removeDragEnter = useEventListener(document, 'dragenter', (e) => {
-    // emit('onDragEnter', e, data)
-  });
-
-  /**
-   * Might be useful when we want to move the element horizontally or vertically
-   * Turn off default for better performance
-   * @param e 
-   */
-  const removeDragMove = useEventListener(document, 'drag', (e) => {
-    // e.preventDefault();
-    // const axisMove = {
-    //   x: e.clientX - axisStart.x,
-    //   y: e.clientY - axisStart.y
-    // }
-    // let axisNew = {
-    //   x: temp.x + axisMove.x,
-    //   y: temp.y + axisMove.y
-    // }
-    // if (itemRef.value?.style) {
-    //   itemRef.value.style.opacity = "0.8";
-    //   modelValue.value.x = axisNew.x;
-    //   modelValue.value.y = axisNew.y;
-    // }
-
-    // emit('onDragMove', e, data)
-  });
-
-  const removeDragLeave = useEventListener(document, 'dragleave', (e) => {
-    // emit('onDragLeave', e, data)
-  })
-
-  const removeDragOver = useEventListener(document, 'dragover', (e) => {
-    // Need to prevent default to allow drop
-    e.preventDefault();
-    // emit('onDragOver', e, data)
-  })
-
-  const removeDrop = useEventListener(document, 'drop', (e) => {
-    rootElement.value.classList.remove('dragging');
-
+  const removeMouseMove = useEventListener(document, 'mousemove', (e) => {
     const axisEnd = {
       x: e.clientX - axisStart.x,
       y: e.clientY - axisStart.y
@@ -260,34 +204,34 @@ const onDragStart = (e: DragEvent) => {
       axisNew.y = Math.round(axisNew.y / options.value.grid.y) * options.value.grid.y;
     }
 
+    if (options.value.grid.stickToGrid) {
+      axisNew.x = Math.round(axisNew.x / options.value.grid.x) * options.value.grid.x;
+      axisNew.y = Math.round(axisNew.y / options.value.grid.y) * options.value.grid.y;
+    }
+
     data = {
-      x: clamp(axisNew.x, 0, container.value.width - rootBounding.value.width),
-      y: clamp(axisNew.y, 0, container.value.height - rootBounding.value.height),
+      x: clamp(axisNew.x, 0, container.value.width - temp.width),
+      y: clamp(axisNew.y, 0, container.value.height - temp.height + 1),
       width: temp.width,
       height: temp.height
     }
 
-    submitEmits('onDrop', e, data)
-
-
+    submitEmits('onMouseMove', e, data)
   })
 
 
-  const removeDragEnd = useEventListener(document, 'dragend', (e) => {
+  const removeMouseUp = useEventListener(document, 'mouseup', (e) => {
 
     resizeable.value = true
+    rootElement.value.classList.remove('dragging');
+    submitEmits('onMouseUp', e, data)
+    removeMouseMove()
+    removeMouseUp()
 
-    submitEmits('onDragEnd', e, data)
-
-    removeDragMove()
-    removeDragEnter()
-    removeDragOver()
-    removeDragLeave()
-    removeDrop()
-    removeDragEnd()
 
   });
 };
+
 
 /**
  * Resize start event handler
@@ -296,11 +240,12 @@ const onDragStart = (e: DragEvent) => {
  */
 const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "left" | "top-left" | "top-right" | "bottom-left" | "bottom-right") => {
   draggable.value = false
+
   const resizer = e.target as HTMLDivElement
   resizer.style.cursor = 'col-resize'
   document.body.style.cursor = 'col-resize'
 
-
+  rootElement.value.classList.add(`draggify-resizer-direction-${options.value.resize.direction}`);
 
   const axisStart = {
     x: e.clientX,
@@ -308,10 +253,10 @@ const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "l
   }
 
   const temp = {
-    x: state.value.x,
-    y: state.value.y,
-    width: state.value.width,
-    height: state.value.height,
+    x: state.value.x as number,
+    y: state.value.y as number,
+    width: state.value.width as number,
+    height: state.value.height as number,
   }
 
   let data = { ...temp }
@@ -331,7 +276,12 @@ const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "l
       height: temp.height + moveAxis.y
     }
 
-
+    if (options.value.grid.stickToGrid) {
+      axisNew.x = Math.round(axisNew.x / options.value.grid.x) * options.value.grid.x;
+      axisNew.y = Math.round(axisNew.y / options.value.grid.y) * options.value.grid.y;
+      axisNew.width = Math.round(axisNew.width / options.value.grid.x) * options.value.grid.x;
+      axisNew.height = Math.round(axisNew.height / options.value.grid.y) * options.value.grid.y;
+    }
 
 
     switch (direction) {
@@ -398,7 +348,6 @@ const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "l
     document.body.style.removeProperty('cursor')
     submitEmits('onResizeEnd', e, data)
     draggable.value = true
-
     removeResizeMove()
     removeResizeEnd()
   });
@@ -407,16 +356,163 @@ const onResizeStart = (e: MouseEvent, direction: "top" | "right" | "bottom" | "l
 const bindState = computed(() => {
   return {
     ...state.value,
+    isHovering: isHovering.value,
   }
 })
+
+const onMouseOver = (e: MouseEvent) => {
+  isHovering.value = true
+  rootElement.value.classList.add(`draggify-resizer-direction-${options.value.resize.direction}`)
+
+  emit('onHover', isHovering.value)
+}
+const onMouseOut = (e: MouseEvent) => {
+  isHovering.value = false
+  rootElement.value.classList.remove(`draggify-resizer-direction-${options.value.resize.direction}`)
+  emit('onHover', isHovering.value)
+}
+
+/**
+ * Drag start event handler
+ * @param e 
+ */
+const onDragStart = (e: DragEvent) => {
+  if (e.dataTransfer) {
+    e.dataTransfer.clearData();
+  }
+
+  resizeable.value = false
+
+  if (e.dataTransfer) {
+    e.dataTransfer.setData('text/plain', rootElement.value.innerHTML);
+    e.dataTransfer.effectAllowed = "move";
+    rootElement.value.classList.add('dragging');
+  }
+
+  const axisStart = {
+    x: e.clientX,
+    y: e.clientY
+  }
+
+  const temp = {
+    x: state.value.x as number,
+    y: state.value.y as number,
+    width: state.value.width as number,
+    height: state.value.height as number,
+  }
+
+  let data = { ...temp }
+
+  // emit('onDragStart', e, data)
+
+  const removeDragEnter = useEventListener(document, 'dragenter', (e) => {
+    // emit('onDragEnter', e, data)
+  });
+
+  /**
+   * Might be useful when we want to move the element horizontally or vertically
+   * Turn off default for better performance
+   * @param e 
+   */
+  const removeDragMove = useEventListener(document, 'drag', (e) => {
+    // e.preventDefault();
+    // const axisMove = {
+    //   x: e.clientX - axisStart.x,
+    //   y: e.clientY - axisStart.y
+    // }
+    // let axisNew = {
+    //   x: temp.x + axisMove.x,
+    //   y: temp.y + axisMove.y
+    // }
+    // if (itemRef.value?.style) {
+    //   itemRef.value.style.opacity = "0.8";
+    //   modelValue.value.x = axisNew.x;
+    //   modelValue.value.y = axisNew.y;
+    // }
+
+    // emit('onDragMove', e, data)
+  });
+
+  const removeDragLeave = useEventListener(document, 'dragleave', (e) => {
+    // emit('onDragLeave', e, data)
+  })
+
+  const removeDragOver = useEventListener(document, 'dragover', (e) => {
+    // Need to prevent default to allow drop
+    e.preventDefault();
+    // emit('onDragOver', e, data)
+  })
+
+  const removeDrop = useEventListener(document, 'drop', (e) => {
+    rootElement.value.classList.remove('dragging');
+
+    const axisEnd = {
+      x: e.clientX - axisStart.x,
+      y: e.clientY - axisStart.y
+    }
+
+    let axisNew = {
+      x: temp.x + axisEnd.x,
+      y: temp.y + axisEnd.y
+    }
+
+    if (options.value.grid.stickToGrid) {
+      axisNew.x = Math.round(axisNew.x / options.value.grid.x) * options.value.grid.x;
+      axisNew.y = Math.round(axisNew.y / options.value.grid.y) * options.value.grid.y;
+    }
+
+    data = {
+      x: clamp(axisNew.x, 0, container.value.width - temp.width),
+      y: clamp(axisNew.y, 0, container.value.height - temp.height + 1),
+      width: temp.width,
+      height: temp.height
+    }
+
+    submitEmits('onDrop', e, data)
+  })
+
+
+  const removeDragEnd = useEventListener(document, 'dragend', (e) => {
+
+    resizeable.value = true
+
+    submitEmits('onDragEnd', e, data)
+
+    removeDragMove()
+    removeDragEnter()
+    removeDragOver()
+    removeDragLeave()
+    removeDrop()
+    removeDragEnd()
+
+  });
+};
+
+
+const moveEvents = props.dragType === 'move' ? { mousedown: onMoveStart } : {
+  draggable: draggable,
+  dragstart: onDragStart
+}
+
+const bindEvents = {
+  ...{
+    mouseover: onMouseOver,
+    mouseout: onMouseOut
+  },
+  ...moveEvents
+}
+
+const bindAttrs = props.dragType === 'drag' ? { draggable: draggable.value } : {}
 </script>
 
 <template>
-  <div :style="[itemStyles, style]" class="draggify-item" :class="containerResizeDirectionClass" :draggable="draggable"
-    @dragstart.stop="onDragStart">
+  <div :style="[itemStyles, style]" class="draggify-item" v-on="bindEvents" v-bind="bindAttrs">
+    <slot v-bind="bindState" name="top"></slot>
     <div class="draggify-content">
       <slot v-bind="bindState"></slot>
     </div>
+    <slot v-bind="bindState" name="bottom"></slot>
+    <slot name="bottom"></slot>
     <div class="draggify-resizer draggify-resizer-top-left" @mousedown.stop="onResizeStart($event, 'top-left')"></div>
     <div class="draggify-resizer draggify-resizer-top" @mousedown.stop="onResizeStart($event, 'top')"></div>
     <div class="draggify-resizer draggify-resizer-right" @mousedown.stop="onResizeStart($event, 'right')"></div>
@@ -435,7 +531,8 @@ const bindState = computed(() => {
   opacity: 1;
 
   &.dragging {
-    opacity: 0.4;
+    filter: brightness(98%);
+
   }
 
   .draggify-content {
@@ -448,6 +545,8 @@ const bindState = computed(() => {
     right: 0;
     bottom: 0;
     overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .draggify-resizer {
