@@ -6,6 +6,7 @@ export const defaultOptions = {
     marginY: 0,
   },
   resize: {
+    disabled: false,
     direction: 'all',
     color: 'rgba(0, 0, 0, 0.5)',
     handle: 'hover',
